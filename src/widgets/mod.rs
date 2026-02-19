@@ -1,4 +1,4 @@
-pub mod divider;
+pub mod command_line;
 pub mod overlay;
 pub mod result;
 pub mod search_box;

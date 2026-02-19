@@ -38,9 +38,19 @@ pub struct Main {
 }
 
 impl Main {
+    const DIRECTORIES: &[&str] = &[
+        "/usr/bin",
+        "/usr/local/bin",
+        "/bin",
+        "/sbin",
+        "/usr/sbin",
+        "/usr/local/sbin",
+        "/snap/bin",
+    ];
+
     pub fn new() -> Self {
-        let buffer = util::fs::search_in_directory("/usr/bin", None);
-        let len = util::fs::count_files_in_directory("/usr/bin");
+        let buffer = util::fs::search_in_directories(Self::DIRECTORIES, None);
+        let len = buffer.len();
 
         let mut m = Self {
             search_box: SearchBox::new(),
@@ -60,7 +70,7 @@ impl Main {
     }
 
     fn update_buffer(&mut self) {
-        self.buffer = util::fs::search_in_directory("/usr/bin", {
+        self.buffer = util::fs::search_in_directories(Self::DIRECTORIES, {
             if self.search_box.is_empty() {
                 None
             } else {
@@ -171,7 +181,7 @@ impl Main {
                 let absolute_index = self.scroll_offset + index;
                 widgets::result::draw(frame, area, result, index % 2 == 0, absolute_index == self.selected);
 
-                area = area.clone().offset(Offset::new(0, 1));
+                area = area.offset(Offset::new(0, 1));
             }
         }
 
@@ -186,17 +196,20 @@ impl Main {
 
             match &self.man_content {
                 Some(content) if !content.is_empty() => {
-                    widgets::text::draw(frame, man_area, content, None);
+                    widgets::text::draw(frame, man_area, content, Some(ratatui::style::Color::White));
                 },
                 _ => {
-                    widgets::text::draw(
-                        frame,
-                        man_area,
-                        "Man page is empty or not found ¯\\_(ツ)_/¯",
-                        Some(ratatui::style::Color::Red),
-                    );
+                    widgets::text::draw(frame, man_area, common::MAN_NOT_FOUND, Some(ratatui::style::Color::Red));
                 },
             }
         }
+    }
+
+    pub fn get_man_content(&self) -> Option<&str> {
+        self.man_content.as_deref()
+    }
+
+    pub fn get_selected_binary(&self) -> Option<&str> {
+        self.buffer.get(self.selected).map(heapless::string::StringInner::as_str)
     }
 }

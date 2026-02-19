@@ -10,7 +10,7 @@ use ratatui::{
 
 pub fn draw(frame: &mut Frame, area: Rect, title: &str, is_odd: bool, is_selected: bool) {
     let text = if is_selected {
-        format!("→ {}", title)
+        format!("→ {title}")
     } else {
         title.to_string()
     };

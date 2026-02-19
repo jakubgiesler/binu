@@ -10,32 +10,51 @@ use crate::common::{
 };
 
 pub fn run_man(on_file: &str) -> Option<std::string::String> {
-    match Command::new("man").arg(on_file).output() {
-        Ok(output) => Some(std::string::String::from_utf8_lossy(&output.stdout).to_string()),
+    match Command::new("man").arg(on_file).arg("--pager=cat").output() {
+        Ok(output) if !output.stdout.is_empty() => Some(std::string::String::from_utf8_lossy(&output.stdout).to_string()),
+        _ => None,
+    }
+}
+
+pub fn run_command(command: &str) -> Option<std::string::String> {
+    let status = Command::new("sh")
+        .arg("-c")
+        .arg(command)
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .status();
+
+    match status {
+        Ok(_) => Some(std::string::String::new()),
         Err(_) => None,
     }
 }
 
-pub fn count_files_in_directory(dir: &str) -> usize {
-    fs::read_dir(dir).map(|e| e.flatten().count()).unwrap_or(0)
-}
-
-pub fn search_in_directory(dir: &str, filter: Option<&str>) -> Vec<String<{ common::STRING_SIZE }>> {
+pub fn search_in_directories(dirs: &[&str], filter: Option<&str>) -> Vec<String<{ common::STRING_SIZE }>> {
     let mut buffer = Vec::new();
+    let mut seen = std::collections::HashSet::new();
 
-    if let Ok(es) = fs::read_dir(dir) {
-        for e in es.flatten() {
-            if let Ok(file_name) = e.file_name().into_string() {
-                if let Some(ref f) = filter {
-                    if !file_name.contains(f) {
+    for dir in dirs {
+        if let Ok(es) = fs::read_dir(dir) {
+            for e in es.flatten() {
+                if let Ok(file_name) = e.file_name().into_string() {
+                    if let Some(ref f) = filter
+                        && !file_name.contains(f)
+                    {
                         continue;
                     }
-                }
 
-                let mut s: String<{ common::STRING_SIZE }> = String::new();
+                    if seen.contains(&file_name) {
+                        continue;
+                    }
 
-                if s.push_str(&file_name).is_ok() {
-                    buffer.push(s);
+                    let mut s: String<{ common::STRING_SIZE }> = String::new();
+
+                    if s.push_str(&file_name).is_ok() {
+                        seen.insert(file_name);
+                        buffer.push(s);
+                    }
                 }
             }
         }

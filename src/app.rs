@@ -16,6 +16,7 @@ use ratatui::{
 
 use crate::{
     common,
+    util,
     views::{
         cmd::Cmd,
         main::Main,
@@ -52,11 +53,37 @@ impl App {
                 self.request_redraw();
             },
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => match key_event.code {
-                KeyCode::Esc => self.set_flag(Self::SHOULD_CLOSE, true),
+                KeyCode::Esc => {
+                    if !self.get_flag(Self::IN_CMD_VIEW) {
+                        self.set_flag(Self::SHOULD_CLOSE, true);
+                    } else {
+                        self.set_flag(Self::IN_CMD_VIEW, false);
+
+                        self.request_redraw();
+                    }
+                },
                 KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => self.set_flag(Self::SHOULD_CLOSE, true),
+                KeyCode::Enter => {
+                    if !self.get_flag(Self::IN_CMD_VIEW) {
+                        self.set_flag(Self::IN_CMD_VIEW, true);
+
+                        let selected_command = self.main_view.get_selected_binary().unwrap_or("");
+
+                        self.cmd_view.set_selected_command(selected_command);
+                        self.cmd_view.set_prefix_length(selected_command.len());
+
+                        self.request_redraw();
+                    } else {
+                        if !self.cmd_view.is_empty() {
+                            util::fs::run_command(self.cmd_view.get_command());
+                        }
+
+                        self.set_flag(Self::SHOULD_CLOSE, true);
+                    }
+                },
                 _ => {
                     #[allow(clippy::collapsible_if)]
-                    {
+                    if !self.get_flag(Self::IN_CMD_VIEW) {
                         if KeyCode::Down == key_event.code {
                             if self.main_view.event(common::Event::Down) {
                                 self.request_redraw();
@@ -82,6 +109,33 @@ impl App {
                                 self.request_redraw();
                             }
                         }
+                    } else {
+                        // IN CMD VIEW
+                        if KeyCode::Down == key_event.code {
+                            if self.cmd_view.event(common::Event::Down) {
+                                self.request_redraw();
+                            }
+                        }
+
+                        if KeyCode::Up == key_event.code {
+                            if self.cmd_view.event(common::Event::Up) {
+                                self.request_redraw();
+                            }
+                        }
+
+                        if KeyCode::Backspace == key_event.code {
+                            if self.cmd_view.event(common::Event::Backspace) {
+                                self.request_redraw();
+                            }
+                        }
+
+                        if let KeyCode::Char(c) = key_event.code
+                            && c.is_ascii()
+                        {
+                            if self.cmd_view.event(common::Event::Character(c)) {
+                                self.request_redraw();
+                            }
+                        }
                     }
                 },
             },
@@ -101,7 +155,7 @@ impl App {
         //
 
         if self.get_flag(Self::IN_CMD_VIEW) {
-            self.cmd_view.draw(frame, area);
+            self.cmd_view.draw(frame, area, self.main_view.get_man_content());
 
             return;
         }

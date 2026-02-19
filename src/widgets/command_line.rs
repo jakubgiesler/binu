@@ -22,14 +22,16 @@ use ratatui::{
 };
 
 #[derive(Debug)]
-pub struct SearchBox<const T: usize> {
+pub struct CommandLine<const T: usize> {
     content: String<T>,
+    prefix_length: usize,
 }
 
-impl<const T: usize> SearchBox<T> {
+impl<const T: usize> CommandLine<T> {
     pub const fn new() -> Self {
         Self {
             content: String::new(),
+            prefix_length: 0,
         }
     }
 
@@ -38,11 +40,15 @@ impl<const T: usize> SearchBox<T> {
     }
 
     pub fn pop(&mut self) -> Option<char> {
-        self.content.pop()
+        if self.content.len() > self.prefix_length {
+            self.content.pop()
+        } else {
+            None
+        }
     }
 
     pub fn draw(&self, frame: &mut Frame, area: Rect) {
-        let block = Block::default().borders(Borders::ALL).fg(Color::Magenta).title(" Search ");
+        let block = Block::default().borders(Borders::ALL).fg(Color::Red).title(" Command Line ");
 
         frame.render_widget(block, area);
 
@@ -54,6 +60,16 @@ impl<const T: usize> SearchBox<T> {
             x: area.x + u16::try_from(self.content.len()).unwrap_or(u16::MAX) + 2,
             y: area.y + 1,
         });
+    }
+
+    pub const fn set_prefix_length(&mut self, length: usize) {
+        self.prefix_length = length;
+    }
+
+    pub fn set_text(&mut self, text: &str) -> Result<(), CapacityError> {
+        self.content.clear();
+
+        self.content.push_str(text)
     }
 
     pub fn is_empty(&self) -> bool {

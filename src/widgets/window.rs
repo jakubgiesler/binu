@@ -16,11 +16,10 @@ use ratatui::{
 };
 
 pub fn draw(frame: &mut Frame, area: Rect, title: Option<&str>, footer: Option<&str>) {
-    let block = if let Some(title) = title {
-        Block::default().borders(Borders::ALL).fg(Color::DarkGray).title(title)
-    } else {
-        Block::default().borders(Borders::ALL).fg(Color::DarkGray)
-    };
+    let block = title.map_or_else(
+        || Block::default().borders(Borders::ALL).fg(Color::DarkGray),
+        |title| Block::default().borders(Borders::ALL).fg(Color::DarkGray).title(title),
+    );
 
     frame.render_widget(block, area);
 
